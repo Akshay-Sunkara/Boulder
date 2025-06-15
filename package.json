@@ -1,0 +1,33 @@
+{
+  "name": "rok",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "~53.0.9",
+    "expo-camera": "~16.1.8",
+    "expo-constants": "~17.1.6",
+    "expo-linking": "~7.1.5",
+    "expo-media-library": "~17.1.7",
+    "expo-navigation-bar": "~4.2.5",
+    "expo-router": "~5.0.7",
+    "expo-status-bar": "~2.2.3",
+    "react": "19.0.0",
+    "react-native": "0.79.2",
+    "react-native-button-toggle-group": "^1.1.2",
+    "react-native-expo-viewport-units": "^0.0.8",
+    "react-native-paper": "^5.14.5",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.10.0",
+    "react-native-vector-icons": "^10.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  },
+  "private": true
+}
