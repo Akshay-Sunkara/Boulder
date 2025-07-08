@@ -113,20 +113,39 @@ const Home = () => {
         const thumbResponse = await fetch(thumbnailUri);
         const thumbBlob = await thumbResponse.blob();
 
-        const thumbRef = ref(storage, `Thumbnails/${Date.now()}.jpg`);
+        const ID = `${Date.now()}`;
+
+        const thumbRef = ref(storage, `Thumbnails/${ID}.jpg`);
         await uploadBytes(thumbRef, thumbBlob);
         const thumbURL = await getDownloadURL(thumbRef);
         console.log('Uploaded thumbnail:', thumbURL);
 
-        const output = await fetch('http://10.14.175.22:5000/save-thumb', {
+        if (isEnabled)
+        {
+          console.log('Beta')
+
+          const output = await fetch('http://10.14.175.22:5000/upsert', {
+          method: 'POST',
+          body: JSON.stringify({ID: ID, thumb_url: thumbURL}),
+          });
+        }
+        else
+        {
+          console.log('Run')
+
+          const output = await fetch('http://10.14.175.22:5000/save-thumb', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ thumb_url: thumbURL }),
-        });
+          });
+          const data = await output.json();
+          console.log('Response from Flask:', data);
 
-        const data = await output.json();
-        console.log('Response from Flask:', data);
-
+          const beta = data.id
+          const pictureStorage = getStorage()
+          const pictureStorageRef = ref(storage, `Thumbnails/${beta}.jpg`)
+          const downloadURL = await getDownloadURL(pictureStoageRef);
+        }
         setUploaded(true);
 
         setTimeout(() => {
