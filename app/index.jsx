@@ -50,20 +50,34 @@ const Home = () => {
   const [isUploaded, setUploaded] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const containerAnim = useRef(new Animated.Value(0)).current;
   const [resultText, setResultText] = useState('Uploaded Video! Finding Beta...');
   const [betaFound, setBetaFound] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  useEffect(() => {
+    if (isUploaded) {
+      Animated.timing(containerAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 1000,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      containerAnim.setValue(0);
+    }
+  }, [isUploaded]);
 
   useEffect(() => {
     if (isUploaded) {
       setResultText('Uploaded Video! Finding Beta...');
+      fadeAnim.setValue(0);
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
-        delay: 2000,
+        duration: 800,
+        delay: 1200,
         useNativeDriver: true,
       }).start();
-    } else {
-      fadeAnim.setValue(0);
     }
   }, [isUploaded]);
 
@@ -71,15 +85,20 @@ const Home = () => {
     if (betaFound) {
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 200,
+        duration: 800,
         useNativeDriver: true,
       }).start(() => {
         setResultText('Beta Found! 🎉');
+        fadeAnim.setValue(0);
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 400,
+          duration: 800,
           useNativeDriver: true,
-        }).start();
+        }).start(() => {
+          setTimeout(() => {
+            setShowConfetti(true);
+          }, 0);
+        });
       });
     }
   }, [betaFound]);
@@ -97,8 +116,8 @@ const Home = () => {
         console.log('Got video at', uri);
 
         const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(
-        uri,
-        { time: 1500 }
+          uri,
+          { time: 1500 }
         );
         console.log('Got picture at', thumbnailUri);
 
@@ -110,6 +129,8 @@ const Home = () => {
         const downloadURL = await getDownloadURL(storageRef1);
         console.log('Uploaded video:', downloadURL);
 
+        setUploaded(true)
+
         const thumbResponse = await fetch(thumbnailUri);
         const thumbBlob = await thumbResponse.blob();
 
@@ -120,33 +141,29 @@ const Home = () => {
         const thumbURL = await getDownloadURL(thumbRef);
         console.log('Uploaded thumbnail:', thumbURL);
 
-        if (isEnabled)
-        {
+        if (isEnabled) {
           console.log('Beta')
 
-          const output = await fetch('http://10.14.175.22:5000/upsert', {
-          method: 'POST',
-          body: JSON.stringify({ID: ID, thumb_url: thumbURL}),
+          await fetch('http://10.14.175.22:5000/upsert', {
+            method: 'POST',
+            body: JSON.stringify({ ID: ID, thumb_url: thumbURL }),
           });
-        }
-        else
-        {
+
+        } else {
           console.log('Run')
 
           const output = await fetch('http://10.14.175.22:5000/save-thumb', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ thumb_url: thumbURL }),
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ thumb_url: thumbURL }),
           });
           const data = await output.json();
           console.log('Response from Flask:', data);
 
-          const beta = data.id
-          const pictureStorage = getStorage()
-          const pictureStorageRef = ref(storage, `Thumbnails/${beta}.jpg`)
-          const downloadURL = await getDownloadURL(pictureStoageRef);
+          const beta = data.id;
+          const storageRef = ref(storage, `Thumbnails/${beta}.jpg`);
+          await getDownloadURL(storageRef);
         }
-        setUploaded(true);
 
         setTimeout(() => {
           setBetaFound(true);
@@ -184,7 +201,7 @@ const Home = () => {
     { key: '2', value: '🍼  V2  🍼' },
     { key: '3', value: '🐣  V3  🐣' },
     { key: '4', value: '🌿  V4  🌿' },
-    { key: '5', value: '🪴  V3  🪴' },
+    { key: '5', value: '🪴  V5  🪴' },
     { key: '6', value: '🏆  V6  🏆' },
   ];
   const [isEnabled, setIsEnabled] = useState(false);
@@ -217,17 +234,17 @@ const Home = () => {
               setSelected={val => setSelected(val)}
               data={data}
               save="value"
-              style={styles.list}
               boxStyles={{ width: 110, padding: 0, borderColor: 'white', top: 22, left: 10 }}
               inputStyles={{ color: 'white' }}
-              dropdownStyles={{ width: 110, borderColor: 'white', top: 18, left: 10, height: 90, alignItems: 'center'}}
-              dropdownTextStyles={{ color: 'white', fontWeight: 600}}
+              dropdownStyles={{ width: 110, borderColor: 'white', top: 18, left: 10, height: 90, alignItems: 'center' }}
+              dropdownTextStyles={{ color: 'white', fontWeight: 600 }}
               placeholder={'V1'}
               search={false}
-              arrowicon={<Icon name="chevron-down-outline" size={20} color="white" left={5}/>}
+              arrowicon={<Icon name="chevron-down-outline" size={20} color="white" left={5} />}
             />
           </View>
-          <View style={[styles.rectangleOverlay, { width: rectSize.width, height: rectSize.height, maxHeight: 500, maxWidth: 300 }]}>
+
+          <View style={[styles.rectangleOverlay, { width: rectSize.width, height: rectSize.height }]}>
             <View style={[styles.corner, styles.topLeft]} />
             <View style={[styles.corner, styles.topRight]} />
             <Icon style={styles.cameraIcon} name="add-outline" size={40} />
@@ -236,6 +253,7 @@ const Home = () => {
               <View style={[styles.corner, styles.bottomRight]} />
             </PanGestureHandler>
           </View>
+
           <View style={styles.overlay} pointerEvents="box-none">
             <View style={styles.bottomRow}>
               <View style={styles.iconContainer}>
@@ -281,17 +299,20 @@ const Home = () => {
           </View>
         </CameraView>
       </View>
+
       <View style={styles.resultsContainer}>
-        <Animated.View style={[styles.resultsDisplay, { opacity: fadeAnim }]}>
-          <Text style={styles.resultText}>{resultText}</Text>
+        <Animated.View style={[styles.resultsDisplay, { opacity: containerAnim }]}>
+          <Animated.Text style={[styles.resultText, { opacity: fadeAnim }]}>
+            {resultText}
+          </Animated.Text>
         </Animated.View>
-        {betaFound && (
+        {showConfetti && (
           <ConfettiCannon
-            count={50}
-            origin={{ x: 200, y: -10 }}
+            count={200}
+            origin={{ x: 200, y: -30 }}
             fadeOut={true}
-            explosionSpeed={350}
-            fallSpeed={2500}
+            explosionSpeed={800}
+            fallSpeed={4000}
             colors={['rgba(181,21,57,1)', '#fff']}
           />
         )}
@@ -333,4 +354,3 @@ const styles = StyleSheet.create({
   resultsDisplay: { backgroundColor: 'rgba(0,0,0,0.5)', width: 180, height: 25, borderRadius: 33, justifyContent: 'center', alignItems: 'center' },
   resultText: { color: 'white', fontSize: 12 },
 });
-
