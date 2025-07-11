@@ -26,6 +26,7 @@ const Home = () => {
   const rectBase = useRef({ width: 250, height: 120 });
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [hasMicPermission, setHasMicPermission] = useState(false);
+
   useEffect(() => {
     (async () => {
       const camStatus = await Camera.requestCameraPermissionsAsync();
@@ -34,6 +35,7 @@ const Home = () => {
       if (micStatus.granted) setHasMicPermission(true);
     })();
   }, []);
+
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -41,73 +43,146 @@ const Home = () => {
   }, []);
 
   const [isPressed, setIsPressed] = useState(false);
-  const toggleIcon = () => {
-    setIsPressed(prev => !prev);
-  };
+  const toggleIcon = () => setIsPressed(prev => !prev);
 
   const [isRecording, setRecording] = useState(false);
   const camRef = useRef(null);
   const [isUploaded, setUploaded] = useState(false);
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const containerAnim = useRef(new Animated.Value(0)).current;
-  const [resultText, setResultText] = useState('Uploaded Video! Finding Beta...');
+  const [betaUploaded, setBetaUploaded] = useState(false);
+  const [scanFailed, setScanFailed] = useState(false);
   const [betaFound, setBetaFound] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
+  const runContainerAnim = useRef(new Animated.Value(0)).current;
+  const runTextAnim = useRef(new Animated.Value(0)).current;
+
+  const betaContainerAnim = useRef(new Animated.Value(0)).current;
+  const betaTextAnim = useRef(new Animated.Value(0)).current;
+
+  const [resultText, setResultText] = useState('Uploaded Video! Finding Beta...');
+  const [betaResultText, setBetaResultText] = useState('Thank you! Uploaded Beta.');
+
   useEffect(() => {
     if (isUploaded) {
-      Animated.timing(containerAnim, {
+      Animated.timing(runContainerAnim, {
         toValue: 1,
         duration: 500,
         delay: 1000,
         useNativeDriver: true,
       }).start();
-    } else {
-      containerAnim.setValue(0);
-    }
-  }, [isUploaded]);
 
-  useEffect(() => {
-    if (isUploaded) {
-      setResultText('Uploaded Video! Finding Beta...');
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
+      setResultText('Uploaded Video! Finding Beta.');
+      runTextAnim.setValue(0);
+      Animated.timing(runTextAnim, {
         toValue: 1,
         duration: 800,
         delay: 1200,
         useNativeDriver: true,
       }).start();
+    } else {
+      runContainerAnim.setValue(0);
+      runTextAnim.setValue(0);
     }
   }, [isUploaded]);
 
+useEffect(() => {
+  if (betaFound) {
+    Animated.timing(runTextAnim, {
+      toValue: 0,
+      duration: 800,
+      useNativeDriver: true,
+    }).start(() => {
+      setResultText('Beta Found! 🎉');
+      runTextAnim.setValue(0);
+
+      Animated.timing(runTextAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowConfetti(true);
+
+        setTimeout(() => {
+          Animated.timing(runTextAnim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }).start();
+        }, 2000);
+
+        setTimeout(() => {
+          Animated.timing(runContainerAnim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }).start();
+        }, 2000);
+      });
+    });
+  }
+}, [betaFound]);
+
+
   useEffect(() => {
-    if (betaFound) {
-      Animated.timing(fadeAnim, {
+    if (scanFailed) {
+      Animated.timing(runTextAnim, {
         toValue: 0,
         duration: 800,
         useNativeDriver: true,
       }).start(() => {
-        setResultText('Beta Found! 🎉');
-        fadeAnim.setValue(0);
-        Animated.timing(fadeAnim, {
+        setResultText('Beta Not Found 😔 Try again?');
+        runTextAnim.setValue(0);
+        Animated.timing(runTextAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [scanFailed]);
+
+  useEffect(() => {
+    if (betaUploaded) {
+      betaContainerAnim.setValue(0);
+      betaTextAnim.setValue(0);
+
+      Animated.timing(betaContainerAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 500,
+        useNativeDriver: true,
+      }).start(() => {
+        Animated.timing(betaTextAnim, {
           toValue: 1,
           duration: 800,
           useNativeDriver: true,
         }).start(() => {
           setTimeout(() => {
-            setShowConfetti(true);
-          }, 0);
+            Animated.timing(betaContainerAnim, {
+              toValue: 0,
+              duration: 500,
+              useNativeDriver: true,
+            }).start();
+            Animated.timing(betaTextAnim, {
+              toValue: 0,
+              duration: 500,
+              useNativeDriver: true,
+            }).start();
+          }, 5000);
         });
       });
+    } else {
+      betaContainerAnim.setValue(0);
+      betaTextAnim.setValue(0);
     }
-  }, [betaFound]);
+  }, [betaUploaded]);
 
   const recordIcon = async () => {
     LayoutAnimation.configureNext({
       duration: 300,
       update: { type: LayoutAnimation.Types.easeInEaseOut },
     });
+
     if (!isRecording) {
       try {
         setRecording(true);
@@ -122,36 +197,32 @@ const Home = () => {
         console.log('Got picture at', thumbnailUri);
 
         const response = await fetch(uri);
-        const blob = await response.blob()
+        const blob = await response.blob();
         const storage = getStorage(app);
         const storageRef1 = ref(storage, `Videos/${Date.now()}.mp4`);
         await uploadBytes(storageRef1, blob);
         const downloadURL = await getDownloadURL(storageRef1);
         console.log('Uploaded video:', downloadURL);
 
-        setUploaded(true)
-
         const thumbResponse = await fetch(thumbnailUri);
         const thumbBlob = await thumbResponse.blob();
 
         const ID = `${Date.now()}`;
-
         const thumbRef = ref(storage, `Thumbnails/${ID}.jpg`);
         await uploadBytes(thumbRef, thumbBlob);
         const thumbURL = await getDownloadURL(thumbRef);
         console.log('Uploaded thumbnail:', thumbURL);
 
         if (isEnabled) {
-          console.log('Beta')
-
+          console.log('Beta');
           await fetch('http://10.14.175.22:5000/upsert', {
             method: 'POST',
             body: JSON.stringify({ ID: ID, thumb_url: thumbURL }),
           });
-
+          setBetaUploaded(true);
         } else {
-          console.log('Run')
-
+          setUploaded(true);
+          console.log('Run');
           const output = await fetch('http://10.14.175.22:5000/save-thumb', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -159,19 +230,19 @@ const Home = () => {
           });
           const data = await output.json();
           console.log('Response from Flask:', data);
-
           const beta = data.id;
           const storageRef = ref(storage, `Thumbnails/${beta}.jpg`);
           await getDownloadURL(storageRef);
-        }
 
-        setTimeout(() => {
+          setTimeout(() => {
           setBetaFound(true);
         }, 4000);
+        }
 
       } catch (e) {
         console.warn('Failed to start recording', e);
         setRecording(false);
+        setScanFailed(true);
       }
     } else {
       try {
@@ -301,9 +372,14 @@ const Home = () => {
       </View>
 
       <View style={styles.resultsContainer}>
-        <Animated.View style={[styles.resultsDisplay, { opacity: containerAnim }]}>
-          <Animated.Text style={[styles.resultText, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.resultsDisplay, { opacity: runContainerAnim }]}>
+          <Animated.Text style={[styles.resultText, { opacity: runTextAnim }]}>
             {resultText}
+          </Animated.Text>
+        </Animated.View>
+        <Animated.View style={[styles.resultsDisplay, { opacity: betaContainerAnim }]}>
+          <Animated.Text style={[styles.resultText, { opacity: betaTextAnim }]}>
+            {betaResultText}
           </Animated.Text>
         </Animated.View>
         {showConfetti && (
