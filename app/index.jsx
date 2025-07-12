@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
+import { Image, StyleSheet, View, Text, TouchableOpacity, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Switch } from 'react-native-switch';
-import { SelectList } from 'react-native-dropdown-select-list';
 import { initializeApp } from 'firebase/app';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import * as VideoThumbnails from 'expo-video-thumbnails';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfJxqVElWXx3UNULE1R-2OG1zX4K5lKGo",
@@ -27,6 +25,29 @@ const Home = () => {
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [hasMicPermission, setHasMicPermission] = useState(false);
 
+  const [isPressed, setIsPressed] = useState(false);
+  const toggleIcon = () => setIsPressed(prev => !prev);
+
+  const camRef = useRef(null);
+  const [isUploaded, setUploaded] = useState(false);
+  const [betaUploaded, setBetaUploaded] = useState(false);
+  const [scanFailed, setScanFailed] = useState(false);
+  const [betaFound, setBetaFound] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [isRecording, setRecording] = useState(false);
+
+  const runContainerAnim = useRef(new Animated.Value(0)).current;
+  const runTextAnim = useRef(new Animated.Value(0)).current;
+  const betaContainerAnim = useRef(new Animated.Value(0)).current;
+  const betaTextAnim = useRef(new Animated.Value(0)).current;
+  const photoAnim = useRef(new Animated.Value(1)).current;
+
+  const [resultText, setResultText] = useState('Uploaded Video! Finding Beta...');
+  const [betaResultText, setBetaResultText] = useState('Thank you! Uploaded Beta.');
+
+  const [isEnabled, setIsEnabled] = useState(false);
+  const toggleSwitch = () => setIsEnabled(s => !s);
+
   useEffect(() => {
     (async () => {
       const camStatus = await Camera.requestCameraPermissionsAsync();
@@ -42,26 +63,6 @@ const Home = () => {
     }
   }, []);
 
-  const [isPressed, setIsPressed] = useState(false);
-  const toggleIcon = () => setIsPressed(prev => !prev);
-
-  const [isRecording, setRecording] = useState(false);
-  const camRef = useRef(null);
-  const [isUploaded, setUploaded] = useState(false);
-  const [betaUploaded, setBetaUploaded] = useState(false);
-  const [scanFailed, setScanFailed] = useState(false);
-  const [betaFound, setBetaFound] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-
-  const runContainerAnim = useRef(new Animated.Value(0)).current;
-  const runTextAnim = useRef(new Animated.Value(0)).current;
-
-  const betaContainerAnim = useRef(new Animated.Value(0)).current;
-  const betaTextAnim = useRef(new Animated.Value(0)).current;
-
-  const [resultText, setResultText] = useState('Uploaded Video! Finding Beta...');
-  const [betaResultText, setBetaResultText] = useState('Thank you! Uploaded Beta.');
-
   useEffect(() => {
     if (isUploaded) {
       Animated.timing(runContainerAnim, {
@@ -71,7 +72,7 @@ const Home = () => {
         useNativeDriver: true,
       }).start();
 
-      setResultText('Uploaded Video! Finding Beta.');
+      setResultText('Uploaded Photo! Finding Beta...');
       runTextAnim.setValue(0);
       Animated.timing(runTextAnim, {
         toValue: 1,
@@ -85,43 +86,42 @@ const Home = () => {
     }
   }, [isUploaded]);
 
-useEffect(() => {
-  if (betaFound) {
-    Animated.timing(runTextAnim, {
-      toValue: 0,
-      duration: 800,
-      useNativeDriver: true,
-    }).start(() => {
-      setResultText('Beta Found! 🎉');
-      runTextAnim.setValue(0);
-
+  useEffect(() => {
+    if (betaFound) {
       Animated.timing(runTextAnim, {
-        toValue: 1,
+        toValue: 0,
         duration: 800,
         useNativeDriver: true,
       }).start(() => {
-        setShowConfetti(true);
+        setResultText('Beta Found! 🎉');
+        runTextAnim.setValue(0);
 
-        setTimeout(() => {
-          Animated.timing(runTextAnim, {
-            toValue: 0,
-            duration: 800,
-            useNativeDriver: true,
-          }).start();
-        }, 2000);
+        Animated.timing(runTextAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowConfetti(true);
 
-        setTimeout(() => {
-          Animated.timing(runContainerAnim, {
-            toValue: 0,
-            duration: 800,
-            useNativeDriver: true,
-          }).start();
-        }, 2000);
+          setTimeout(() => {
+            Animated.timing(runTextAnim, {
+              toValue: 0,
+              duration: 800,
+              useNativeDriver: true,
+            }).start();
+          }, 2000);
+
+          setTimeout(() => {
+            Animated.timing(runContainerAnim, {
+              toValue: 0,
+              duration: 800,
+              useNativeDriver: true,
+            }).start();
+          }, 2000);
+        });
       });
-    });
-  }
-}, [betaFound]);
-
+    }
+  }, [betaFound]);
 
   useEffect(() => {
     if (scanFailed) {
@@ -177,83 +177,61 @@ useEffect(() => {
     }
   }, [betaUploaded]);
 
-  const recordIcon = async () => {
-    LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-    });
+  const animatePhoto = () => {
+    Animated.sequence([
+      Animated.timing(photoAnim, { toValue: 0.85, duration: 100, useNativeDriver: true }),
+      Animated.timing(photoAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
+  };
 
-    if (!isRecording) {
-      try {
-        setRecording(true);
+  const capturePhoto = async () => {
+    try {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setRecording(true);
 
-        const { uri } = await camRef.current.recordAsync({ mute: true, maxDuration: 50 });
-        console.log('Got video at', uri);
+      const photo = await camRef.current.takePictureAsync({ quality: 0.8 });
+      const response = await fetch(photo.uri);
+      const blob = await response.blob();
+      const storage = getStorage(app);
 
-        const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(
-          uri,
-          { time: 1500 }
-        );
-        console.log('Got picture at', thumbnailUri);
+      const ID = `${Date.now()}`;
+      const photoRef = ref(storage, `Photos/${ID}.jpg`);
+      await uploadBytes(photoRef, blob);
+      const photoURL = await getDownloadURL(photoRef);
 
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const storage = getStorage(app);
-        const storageRef1 = ref(storage, `Videos/${Date.now()}.mp4`);
-        await uploadBytes(storageRef1, blob);
-        const downloadURL = await getDownloadURL(storageRef1);
-        console.log('Uploaded video:', downloadURL);
+      console.log("Uploaded picture")
 
-        const thumbResponse = await fetch(thumbnailUri);
-        const thumbBlob = await thumbResponse.blob();
+      if (isEnabled) {
+        await fetch('http://10.14.175.22:5000/upsert', {
+          method: 'POST',
+          body: JSON.stringify({ ID: ID, thumb_url: photoURL }),
+        });
+        setBetaUploaded(true);
+      } else {
+        setUploaded(true);
+        const output = await fetch('http://10.14.175.22:5000/save-thumb', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ thumb_url: photoURL }),
+        });
+        const data = await output.json();
+        const beta = data.id;
+        const storageRef = ref(storage, `Thumbnails/${beta}.jpg`);
+        await getDownloadURL(storageRef);
 
-        const ID = `${Date.now()}`;
-        const thumbRef = ref(storage, `Thumbnails/${ID}.jpg`);
-        await uploadBytes(thumbRef, thumbBlob);
-        const thumbURL = await getDownloadURL(thumbRef);
-        console.log('Uploaded thumbnail:', thumbURL);
-
-        if (isEnabled) {
-          console.log('Beta');
-          await fetch('http://10.14.175.22:5000/upsert', {
-            method: 'POST',
-            body: JSON.stringify({ ID: ID, thumb_url: thumbURL }),
-          });
-          setBetaUploaded(true);
-        } else {
-          setUploaded(true);
-          console.log('Run');
-          const output = await fetch('http://10.14.175.22:5000/save-thumb', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ thumb_url: thumbURL }),
-          });
-          const data = await output.json();
-          console.log('Response from Flask:', data);
-          const beta = data.id;
-          const storageRef = ref(storage, `Thumbnails/${beta}.jpg`);
-          await getDownloadURL(storageRef);
-
-          setTimeout(() => {
-          setBetaFound(true);
-        }, 4000);
-        }
-
-      } catch (e) {
-        console.warn('Failed to start recording', e);
-        setRecording(false);
-        setScanFailed(true);
+        setTimeout(() => setBetaFound(true), 4000);
       }
-    } else {
-      try {
-        await camRef.current.stopRecording();
-        console.log('Recording stopped');
-      } catch (e) {
-        console.warn('Failed to stop recording', e);
-      } finally {
-        setRecording(false);
-      }
+    } catch (e) {
+      console.warn('Failed to take photo', e);
+      setScanFailed(true);
+    } finally {
+      setRecording(false);
     }
+  };
+
+  const onCapturePress = async () => {
+    animatePhoto();
+    await capturePhoto();
   };
 
   const handleGestureBottom = event => {
@@ -266,59 +244,49 @@ useEffect(() => {
     }
   };
 
-  const [selected, setSelected] = useState('');
-  const data = [
-    { key: '1', value: '🌱  V1  🌱' },
-    { key: '2', value: '🍼  V2  🍼' },
-    { key: '3', value: '🐣  V3  🐣' },
-    { key: '4', value: '🌿  V4  🌿' },
-    { key: '5', value: '🪴  V5  🪴' },
-    { key: '6', value: '🏆  V6  🏆' },
-  ];
-  const [isEnabled, setIsEnabled] = useState(false);
-  const toggleSwitch = () => setIsEnabled(s => !s);
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <CameraView mode="video" style={styles.camera} enableTorch={isPressed} ref={camRef}>
+        <CameraView style={styles.camera} ref={camRef}>
           <View style={styles.topMenu}>
             <View style={styles.switchContainer}>
               <Switch
                 value={isEnabled}
                 onValueChange={toggleSwitch}
                 circleSize={18}
-                circleBorderWidth={1.3}
+                circleBorderWidth={0}
                 barHeight={16}
-                switchWidthMultiplier={2}
+                switchWidthMultiplier={2.2}
                 switchBorderRadius={7}
                 backgroundActive="rgba(181,21,57,1)"
-                circleActiveColor="#FFFFFF"
-                circleInActiveColor="#FFFFFF"
+                backgroundInactive="#CCCCCC"
+                circleActiveColor="rgba(181,21,57,0)"
+                circleInActiveColor="rgba(0,0,0,0)"
                 ios_backgroundColor="#E0E0E0"
-                activeText=''
-                inActiveText=''
+                activeText=""
+                inActiveText=""
+                renderInsideCircle={() => (
+                  <Image
+                    source={isEnabled ? require('RockInactive.png') : require('rockboy.png')}
+                    style={
+                      isEnabled
+                        ? { width: 35, height: 35, borderRadius: 10 }
+                        : { width: 40, height: 40, borderRadius: 10 }
+                    }
+                  />
+                )}
               />
               <Text style={styles.switchText}>{isEnabled ? 'Beta' : 'Run'}</Text>
             </View>
-            <SelectList
-              setSelected={val => setSelected(val)}
-              data={data}
-              save="value"
-              boxStyles={{ width: 110, padding: 0, borderColor: 'white', top: 22, left: 10 }}
-              inputStyles={{ color: 'white' }}
-              dropdownStyles={{ width: 110, borderColor: 'white', top: 18, left: 10, height: 90, alignItems: 'center' }}
-              dropdownTextStyles={{ color: 'white', fontWeight: 600 }}
-              placeholder={'V1'}
-              search={false}
-              arrowicon={<Icon name="chevron-down-outline" size={20} color="white" left={5} />}
-            />
+            <View style={styles.questionContainer}>
+              <Icon style={styles.questionIcon} name="help-circle-outline" size={33} />
+            </View>
           </View>
 
           <View style={[styles.rectangleOverlay, { width: rectSize.width, height: rectSize.height }]}>
             <View style={[styles.corner, styles.topLeft]} />
             <View style={[styles.corner, styles.topRight]} />
-            <Icon style={styles.cameraIcon} name="add-outline" size={40} />
+            <Icon style={styles.cameraIcon} name="close-outline" size={30} />
             <View style={[styles.corner, styles.bottomLeft]} />
             <PanGestureHandler onGestureEvent={handleGestureBottom} onHandlerStateChange={handleGestureBottom}>
               <View style={[styles.corner, styles.bottomRight]} />
@@ -329,42 +297,34 @@ useEffect(() => {
             <View style={styles.bottomRow}>
               <View style={styles.iconContainer}>
                 <View style={styles.statsContainer}>
-                  <Icon style={styles.icon} name="trending-up-outline" size={40} />
-                  <Text style={styles.stats}>Trends</Text>
+                  <Icon style={styles.gallery} name="images-outline" />
                 </View>
               </View>
-              <TouchableOpacity onPress={recordIcon}>
-                <View style={styles.circleContainer}>
-                  <View
-                    style={{
-                      backgroundColor: 'transparent',
-                      borderColor: 'rgba(181, 21, 57, 0.6)',
-                      borderWidth: 4,
-                      width: 66,
-                      height: 66,
+              <TouchableOpacity onPress={onCapturePress}>
+                <Animated.View style={[styles.circleContainer, { transform: [{ scale: photoAnim }] }]}>
+                  <View style={{
+                    backgroundColor: 'transparent',
+                    borderColor: 'rgba(181, 21, 57, 0.6)',
+                    borderWidth: 4,
+                    width: 66,
+                    height: 66,
+                    borderRadius: 33,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}>
+                    <View style={{
+                      width: 54,
+                      height: 54,
+                      backgroundColor: 'rgba(181, 21, 57, 1)',
                       borderRadius: 33,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: isRecording ? 32 : 54,
-                        height: isRecording ? 32 : 54,
-                        backgroundColor: 'rgba(181, 21, 57, 1)',
-                        borderRadius: isRecording ? 4 : 33,
-                      }}
-                    />
+                    }} />
                   </View>
-                </View>
+                </Animated.View>
               </TouchableOpacity>
               <View style={styles.icon2Container}>
-                <View style={styles.flashContainer}>
-                  <TouchableOpacity onPress={toggleIcon}>
-                    <Icon style={styles.flash} name={isPressed ? 'flash-outline' : 'flash-off-outline'} size={40} />
-                    <Text style={styles.flashText}>Flash</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity onPress={toggleIcon}>
+                  <Icon style={styles.flash} name={isPressed ? 'flash-outline' : 'flash-off-outline'} />
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -386,7 +346,7 @@ useEffect(() => {
           <ConfettiCannon
             count={200}
             origin={{ x: 200, y: -30 }}
-            fadeOut={true}
+            fadeOut
             explosionSpeed={800}
             fallSpeed={4000}
             colors={['rgba(181,21,57,1)', '#fff']}
@@ -405,7 +365,7 @@ const borderWidth = 4;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
   camera: { flex: 1 },
-  rectangleOverlay: { position: 'absolute', top: '17%', alignSelf: 'center', justifyContent: 'center', alignItems: 'center' },
+  rectangleOverlay: { position: 'absolute', top: '20%', alignSelf: 'center', justifyContent: 'center', alignItems: 'center' },
   corner: { width: cornerSize, height: cornerSize, position: 'absolute', borderColor: 'white' },
   topLeft: { top: 0, left: 0, borderTopWidth: borderWidth, borderLeftWidth: borderWidth, borderTopLeftRadius: 12 },
   topRight: { top: 0, right: 0, borderTopWidth: borderWidth, borderRightWidth: borderWidth, borderTopRightRadius: 12 },
@@ -413,20 +373,83 @@ const styles = StyleSheet.create({
   bottomRight: { bottom: 0, right: 0, borderBottomWidth: borderWidth, borderRightWidth: borderWidth, borderBottomRightRadius: 12 },
   cameraIcon: { color: 'rgba(255, 255, 255, 0.8)' },
   overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 60 },
-  iconContainer: { position: 'absolute', right: 100 },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 60,
+    paddingHorizontal: 60,
+    width: '100%',
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   icon: { color: 'white', fontSize: 35 },
-  circleContainer: { justifyContent: 'center', alignItems: 'center' },
-  statsContainer: { justifyContent: 'center', alignItems: 'center' },
+  circleContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   stats: { color: 'rgba(255, 255, 255, 0.8)' },
-  icon2Container: { left: 105, position: 'absolute' },
-  flashContainer: { justifyContent: 'center', alignItems: 'center' },
-  flash: { color: 'white', fontSize: 35 },
-  flashText: { color: 'rgba(255, 255, 255, 0.8)' },
-  switchContainer: { alignSelf: 'flex-start', paddingLeft: 15, paddingTop: 30, paddingBottom: 10, paddingRight: 5, alignItems: 'center', justifyContent: 'center' },
-  switchText: { color: 'rgba(255, 255, 255, 0.8)', top: 5, fontSize: 14 },
-  topMenu: { flex: 1, flexDirection: 'row' },
-  resultsContainer: { position: 'absolute', top: '31%', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-  resultsDisplay: { backgroundColor: 'rgba(0,0,0,0.5)', width: 180, height: 25, borderRadius: 33, justifyContent: 'center', alignItems: 'center' },
-  resultText: { color: 'white', fontSize: 12 },
+  icon2Container: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flashContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flash: {
+    color: 'white',
+    fontSize: 30,
+  },
+
+  switchText: { color: 'rgba(255, 255, 255, 0.8)', top: 7, fontSize: 13, fontFamily: 'sans-serif' },
+  topMenu: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingTop: 40,
+    height: 80,
+  },
+  switchContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  questionContainer: {
+    alignItems: 'center',
+  },
+  questionIcon: {
+    color: 'rgba(255, 255, 255, 1)',
+  },
+
+  gallery: {
+    color: 'rgba(255,255,255,1)',
+    fontSize: 30,
+  },
+  resultsContainer: {
+    position: 'absolute',
+    top: '31%',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resultsDisplay: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 180,
+    height: 25,
+    borderRadius: 33,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resultText: {
+    color: 'white',
+    fontSize: 12,
+  },
 });
