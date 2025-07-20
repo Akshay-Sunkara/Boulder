@@ -5,14 +5,10 @@
     "slug": "ROK",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+
+
     "ios": {
       "supportsTablet": true
     },
@@ -21,7 +17,6 @@
         "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
@@ -30,8 +25,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      "expo-video"
+      "expo-video",
+      ["expo-splash-screen",
+      {
+        "backgroundColor": "#000000",
+        "image": "Boulder/assets/RockInactive.png",
+        "imageWidth": 200
+      }]
     ]
   }
 }

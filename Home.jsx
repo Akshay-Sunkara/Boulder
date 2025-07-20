@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image, StyleSheet, View, Text, TouchableOpacity, LayoutAnimation, Platform, UIManager, Animated, Easing, LogBox } from 'react-native';
+import { Image, StyleSheet, View, Text, TouchableOpacity, LayoutAnimation, Platform, UIManager, Animated, Easing, LogBox, Linking, Pressable } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
@@ -7,11 +7,9 @@ import { Switch } from 'react-native-switch';
 import { initializeApp } from 'firebase/app';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import { useNavigate } from 'react-router-native';
 
-LogBox.ignoreLogs([
-  "Style property 'width' is not supported by native animated module",
-  "Style property 'height' is not supported by native animated module"
-]);
+LogBox.ignoreLogs(['Warning: ...']);
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfJxqVElWXx3UNULE1R-2OG1zX4K5lKGo",
@@ -22,6 +20,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 const Home = () => {
+  const navigate = useNavigate()
   const [rectSize, setRectSize] = useState({ width: 250, height: 120 });
   const rectBase = useRef({ width: 250, height: 120 });
   const [rectPosition, setRectPosition] = useState({ x: 0, y: 0 });
@@ -49,12 +48,18 @@ const Home = () => {
   const [isUploaded, setUploaded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const resultFadeInAnim = useRef(new Animated.Value(0)).current;
+  const resultFadeInAnim2 = useRef(new Animated.Value(0)).current;
   const fadeInAnim = useRef(new Animated.Value(0)).current;
   const loadingMove = useRef(new Animated.Value(10)).current;
   const bottomCornersAnim = useRef(new Animated.Value(0)).current;
   const toggleSwitch = () => setIsEnabled(s => !s);
   const loadingLoop = useRef(null);
   const resultTranslateY = useRef(new Animated.Value(-20)).current;
+  const resultTranslateY2 = useRef(new Animated.Value(-20)).current;
+  const resultFadeInAnim3 = useRef(new Animated.Value(0)).current;
+  const resultTranslateY3 = useRef(new Animated.Value(-20)).current;
+  const [videoUrl, setVideoUrl] = useState('');
+  const pageFadeAnim = useRef(new Animated.Value(1)).current;
 
   const fadeOutUI = () => {
     Animated.timing(fadeAnim, {
@@ -84,6 +89,18 @@ const Home = () => {
     }).start();
   };
 
+  const toggleSwitch2 = () => {
+    setIsEnabled(prev => {
+      const next = !prev;
+      if (!next) {
+        setBetaFound(false);
+        setScanFailed(false);
+        setBetaUploaded(false);
+      }
+      return next;
+    });
+  };
+
   const hideResultContainer = () => {
     Animated.parallel([
       Animated.timing(resultFadeInAnim, {
@@ -100,6 +117,46 @@ const Home = () => {
       }),
     ]).start(() => {
       setBetaFound(false);
+      Linking.openURL(videoUrl);  
+    });
+  };
+
+  const hideResultContainer2 = () => {
+    Animated.parallel([
+      Animated.timing(resultFadeInAnim2, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(resultTranslateY2, {
+        toValue: 40,
+        duration: 400,
+        easing: Easing.out(Easing.back(2)),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setScanFailed(false);
+      setBetaFound(false);
+    });
+  };
+
+  const hideResultContainer3 = () => {
+    Animated.parallel([
+      Animated.timing(resultFadeInAnim3, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(resultTranslateY3, {
+        toValue: 40,
+        duration: 400,
+        easing: Easing.out(Easing.back(2)),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setBetaUploaded(false);
     });
   };
 
@@ -151,7 +208,7 @@ const Home = () => {
       Animated.parallel([
         Animated.timing(loadingMove, {
           toValue: 0,
-          duration: 500,
+          duration: 1000,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
@@ -210,6 +267,52 @@ const Home = () => {
         useNativeDriver: true,
       }),
       Animated.timing(resultTranslateY, {
+        toValue: -80,
+        duration: 400,
+        easing: Easing.out(Easing.back(2)),
+        useNativeDriver: true,
+      }),
+    ]),
+    Animated.delay(150),
+  ]).start(() => {
+    fadeInUI();
+  });
+};
+
+  const resultFadeIn2 = () => {
+  resultTranslateY.setValue(-20);
+  Animated.sequence([
+    Animated.parallel([
+      Animated.timing(resultFadeInAnim2, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(resultTranslateY2, {
+        toValue: -80,
+        duration: 400,
+        easing: Easing.out(Easing.back(2)),
+        useNativeDriver: true,
+      }),
+    ]),
+    Animated.delay(150),
+  ]).start(() => {
+    fadeInUI();
+  });
+};
+
+  const resultFadeIn3 = () => {
+  resultTranslateY3.setValue(-20);
+  Animated.sequence([
+    Animated.parallel([
+      Animated.timing(resultFadeInAnim3, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(resultTranslateY3, {
         toValue: -80,
         duration: 400,
         easing: Easing.out(Easing.back(2)),
@@ -281,15 +384,41 @@ const capturePhoto = async () => {
     setTimeout(() => startLoading(), 0);
     setUploaded(true);
     
-    await fetch('http://10.72.90.22:5000/save-thumb', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ thumb_url: photoURL }),
-    });
+    try {
+      const thumbResponse = await fetch('http://10.72.90.22:5000/save-thumb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thumb_url: photoURL }),
+      });
+
+      const data = await thumbResponse.json();
+      const videoId = data.id;
+
+      const videoRef = ref(storage, `Videos/${videoId}.mp4` )
+      const videoUrl = await getDownloadURL(videoRef);
+      setVideoUrl(videoUrl)
+      
+
+      if (thumbResponse.ok) {
+        setTimeout(() => resultFadeIn(), 500);
+        setBetaFound(true);
+        console.log('Response data:', data);
+        console.log('Download URL:', videoUrl);
+      }
+    } catch (networkError) {
+      console.error('Network error in save-thumb:', networkError);
+      console.error('Error message:', networkError.message);
+      console.error('Error stack:', networkError.stack);
+      setTimeout(() => resultFadeIn2(), 500);
+      setBetaFound(true);
+      setScanFailed(true);
+    }
     
-    setTimeout(() => resultFadeIn(), 500);
-    setBetaFound(true);
   } catch (e) {
+    console.error('General error in capturePhoto:', e);
+    console.error('Error message:', e.message);
+    console.error('Error stack:', e.stack);
+    setTimeout(() => resultFadeIn(), 500);
     setScanFailed(true);
     setRecording(false); 
   }
@@ -331,6 +460,7 @@ const onCapturePress = async () => {
         
         console.log("Upserted thumbnail from video");
         setBetaUploaded(true);
+        setTimeout(() => resultFadeIn3(), 100);
       } catch (err) {
         console.error("Recording error:", err);
         setScanFailed(true);
@@ -364,7 +494,25 @@ const onCapturePress = async () => {
     }
   };
 
+  const pageFadeInAnim = () => {
+    Animated.sequence([
+      Animated.timing(pageFadeAnim, {
+        toValue: 0,
+        duration: 500,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      navigate('/gallery')
+    })
+  };
+
   return (
+    <Animated.View 
+      style={{
+        flex: 1,
+        opacity: pageFadeAnim}}
+    >
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
         <CameraView style={styles.camera} ref={camRef} mode="video">
@@ -388,7 +536,7 @@ const onCapturePress = async () => {
                   inActiveText=""
                   renderInsideCircle={() => (
                     <Image
-                      source={isEnabled ? require('RockInactive.png') : require('rockboy.png')}
+                      source={isEnabled ? require('./assets/RockActive.png') : require('./assets/RockActive.png')}
                       style={isEnabled ? { width: 35, height: 35, borderRadius: 10 } : { width: 40, height: 40, borderRadius: 10 }}
                     />
                   )}
@@ -430,19 +578,92 @@ const onCapturePress = async () => {
               <View style={[styles.corner, styles.bottomRight]} />
             </PanGestureHandler>
           </View>
-          <Animated.View pointerEvents="box-none" style={[styles.resultContainer, { opacity: resultFadeInAnim, transform: [{ translateY: resultTranslateY }], top: rectPosition.y + rectSize.height + 40 }]}>
-            <Text style={styles.heading}>Hmmm, that doesn't look right</Text>
-            <Text style={styles.subHeading}>Sorry, but we weren't able to find a beta for this route.</Text>
-            <Text style={styles.subHeading2}>Maybe, try again? 😞</Text>
-            <TouchableOpacity style={styles.button} onPress={hideResultContainer}>
-              <Text style={styles.buttonText}>Retake photo</Text>
-            </TouchableOpacity>
+          
+          <Animated.View style={{
+            position: 'absolute',
+            bottom: 150,
+            alignSelf: 'center',
+            width: 200,
+            height: 23,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            borderRadius: 16,
+            justifyContent: 'center',
+            alignItems: 'center',
+            opacity: fadeAnim
+          }}>
+            <Animated.Text style={{ color: 'white', fontSize: 12, fontWeight: '500', opacity: fadeAnim }}>
+              Find or upload your beta (β)
+              <Text style={{ fontStyle: 'italic', fontSize: 12 }}> 🐛🚀</Text>
+            </Animated.Text>
           </Animated.View>
+
+          <Animated.View
+            pointerEvents={betaFound && !scanFailed ? 'auto' : 'none'}
+            style={[
+              styles.resultContainer,
+              {
+                opacity: resultFadeInAnim,
+                transform: [{ translateY: resultTranslateY }],
+                top: rectPosition.y + rectSize.height + 120,
+              },
+            ]}
+          >
+          <Text style={styles.heading}>Great! We found your beta</Text>
+          <Text style={styles.subHeading}>We think this beta should work great.</Text>
+          <Text style={styles.subHeading2}>Full send your climb! 🪨 🤟</Text>
+          <TouchableOpacity style={styles.button} onPress={hideResultContainer}>
+            <Text style={styles.buttonText}>View Beta</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents={betaFound && scanFailed ? 'auto' : 'none'}
+          style={[
+            styles.resultContainer2,
+            {
+              opacity: resultFadeInAnim2,
+              transform: [{ translateY: resultTranslateY2 }],
+              top: rectPosition.y + rectSize.height + 150,
+            },
+          ]}
+        >
+          <Text style={styles.heading2}>Hmmm, that doesn't look right</Text>
+          <Text style={styles.subHeading2_2}>
+            Sorry, but we weren't able to find a beta for this route.
+          </Text>
+          <Text style={styles.subHeading22}>Maybe, try again? 😞</Text>
+          <TouchableOpacity style={styles.button2} onPress={hideResultContainer2}>
+            <Text style={styles.buttonText2}>Retake photo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents={betaUploaded && !scanFailed ? 'auto' : 'none'}
+          style={[
+            styles.resultContainer3,
+            {
+              opacity: resultFadeInAnim3,
+              transform: [{ translateY: resultTranslateY3 }],
+              top: rectPosition.y + rectSize.height + 150,
+            },
+          ]}
+        >
+          <Text style={styles.heading3}>Uploaded your Beta!</Text>
+          <Text style={styles.subHeading3}>
+            Thanks so much for helping fellow climbers send their projects.
+          </Text>
+          <TouchableOpacity style={styles.button3} onPress={hideResultContainer3}>
+            <Text style={styles.buttonText3}>Retake photo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
           <View style={styles.overlay} pointerEvents="box-none">
             <View style={styles.bottomRow}>
-              <Animated.View style={{ opacity: fadeAnim }}>
-                <Icon style={styles.gallery} name="images-outline" />
-              </Animated.View>
+            <TouchableOpacity onPress={pageFadeInAnim}>
+                <Animated.View style={{ opacity: fadeAnim }}>
+                  <Icon style={styles.gallery} name="images-outline" />
+                </Animated.View>
+              </TouchableOpacity>
               <TouchableOpacity onPress={onCapturePress}>
                 <Animated.View style={[styles.outerCaptureButton, { opacity: captureOpacityAnim }]}>
                   <Animated.View
@@ -465,6 +686,7 @@ const onCapturePress = async () => {
         </CameraView>
       </View>
     </GestureHandlerRootView>
+    </Animated.View>
   );
 };
 
@@ -509,6 +731,7 @@ const styles = StyleSheet.create({
     zIndex: 1
   },
   resultContainer: {
+    position: 'absolute',
     width: 200,
     backgroundColor: 'white',
     borderRadius: 15,
@@ -526,4 +749,44 @@ const styles = StyleSheet.create({
   subHeading2: { fontSize: 14, textAlign: 'center', color: '#555', marginBottom: 15 },
   button: { backgroundColor: 'black', paddingVertical: 10, paddingHorizontal: 25, borderRadius: 20 },
   buttonText: { color: 'white', fontWeight: '600', fontSize: 14 },
+
+  resultContainer2: {
+    position: 'absolute',
+    width: 200,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    paddingVertical: 20,
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 5,
+    alignSelf: 'center',
+  },
+  heading2: { fontWeight: 'bold', fontSize: 18, marginBottom: 10, textAlign: 'center' },
+  subHeading2_2: { fontSize: 14, textAlign: 'center', color: '#555', marginBottom: 5 },
+  subHeading22: { fontSize: 14, textAlign: 'center', color: '#555', marginBottom: 15 },
+  button2: { backgroundColor: 'black', paddingVertical: 10, paddingHorizontal: 25, borderRadius: 20 },
+  buttonText2: { color: 'white', fontWeight: '600', fontSize: 14 },
+
+  resultContainer3: {
+    position: 'absolute',
+    width: 200,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    paddingVertical: 20,
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 5,
+    alignSelf: 'center',
+  },
+  heading3: { fontWeight: 'bold', fontSize: 18, marginBottom: 10, textAlign: 'center' },
+  subHeading3: { fontSize: 14, textAlign: 'center', color: '#555', marginBottom: 15 },
+  subHeading33: { fontSize: 14, textAlign: 'center', color: '#555', marginBottom: 15 },
+  button3: { backgroundColor: 'black', paddingVertical: 10, paddingHorizontal: 25, borderRadius: 20 },
+  buttonText3: { color: 'white', fontWeight: '600', fontSize: 14 },
 });
