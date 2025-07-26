@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { Image, StyleSheet, View, Text, TouchableOpacity, LayoutAnimation, Platform, UIManager, Animated, Easing, LogBox, Linking, Pressable } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -8,8 +8,21 @@ import { initializeApp } from 'firebase/app';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { useNavigate } from 'react-router-native';
+import Gallery from './Gallery'
 
 LogBox.ignoreLogs(['Warning: ...']);
+
+export const GlobalArrayContext = createContext();
+
+export const GlobalArrayProvider = ({ children }) => {
+  const videoName = useRef('')
+
+  return (
+    <GlobalArrayContext.Provider value={{ videoName }}>
+      {children}
+    </GlobalArrayContext.Provider>
+  );
+};
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfJxqVElWXx3UNULE1R-2OG1zX4K5lKGo",
@@ -20,6 +33,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 const Home = () => {
+  const videoName = useContext(GlobalArrayContext);
   const navigate = useNavigate()
   const [rectSize, setRectSize] = useState({ width: 250, height: 120 });
   const rectBase = useRef({ width: 250, height: 120 });
@@ -60,6 +74,7 @@ const Home = () => {
   const resultTranslateY3 = useRef(new Animated.Value(-20)).current;
   const [videoUrl, setVideoUrl] = useState('');
   const pageFadeAnim = useRef(new Animated.Value(1)).current;
+  const [showGallery, setShowGallery] = useState(false)
 
   const fadeOutUI = () => {
     Animated.timing(fadeAnim, {
@@ -117,7 +132,7 @@ const Home = () => {
       }),
     ]).start(() => {
       setBetaFound(false);
-      Linking.openURL(videoUrl);  
+      setShowGallery(true)
     });
   };
 
@@ -378,6 +393,7 @@ const capturePhoto = async () => {
     const photoRef = ref(storage, `Photos/${ID}.jpg`);
     await uploadBytes(photoRef, blob);
     const photoURL = await getDownloadURL(photoRef);
+    const date = new Date().toISOString().split('T')[0]
     
     setBetaFound(false);
     fadeOutUI();
@@ -385,7 +401,7 @@ const capturePhoto = async () => {
     setUploaded(true);
     
     try {
-      const thumbResponse = await fetch('http://10.72.90.22:5000/save-thumb', {
+      const thumbResponse = await fetch('http://10.141.157.22:5000/save-thumb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ thumb_url: photoURL }),
@@ -397,8 +413,9 @@ const capturePhoto = async () => {
       const videoRef = ref(storage, `Videos/${videoId}.mp4` )
       const videoUrl = await getDownloadURL(videoRef);
       setVideoUrl(videoUrl)
-      
 
+      videoName.current = videoUrl
+      
       if (thumbResponse.ok) {
         setTimeout(() => resultFadeIn(), 500);
         setBetaFound(true);
@@ -452,7 +469,7 @@ const onCapturePress = async () => {
         await uploadBytes(thumbRef, thumbBlob);
         const thumbURL = await getDownloadURL(thumbRef);
         
-        await fetch('http://10.72.90.22:5000/upsert', {
+        await fetch('http://10.141.157.22:5000/upsert', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ID, thumb_url: thumbURL }),
@@ -508,10 +525,11 @@ const onCapturePress = async () => {
   };
 
   return (
+    
     <Animated.View 
       style={{
         flex: 1,
-        opacity: pageFadeAnim}}
+        }}
     >
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
@@ -684,6 +702,7 @@ const onCapturePress = async () => {
             </View>
           </View>
         </CameraView>
+        {showGallery && <Gallery onClose={() => setShowGallery(false)} />}
       </View>
     </GestureHandlerRootView>
     </Animated.View>
