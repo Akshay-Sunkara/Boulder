@@ -401,7 +401,7 @@ const capturePhoto = async () => {
     setUploaded(true);
     
     try {
-      const thumbResponse = await fetch('http://10.141.157.22:5000/save-thumb', {
+      const thumbResponse = await fetch('http://10.160.23.22:5000/save-thumb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ thumb_url: photoURL }),
@@ -469,7 +469,7 @@ const onCapturePress = async () => {
         await uploadBytes(thumbRef, thumbBlob);
         const thumbURL = await getDownloadURL(thumbRef);
         
-        await fetch('http://10.141.157.22:5000/upsert', {
+        await fetch('http://10.160.23.22:5000/upsert', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ID, thumb_url: thumbURL }),

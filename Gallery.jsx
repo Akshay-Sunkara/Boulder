@@ -3,6 +3,8 @@ import {useEvent} from 'expo';
 import Video, { VideoRef } from 'react-native-video';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { WebView } from 'react-native-webview';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   View,
   Text,
@@ -42,18 +44,31 @@ export default function Gallery() {
         easing: Easing.bezier(0.0, 0.0, 0.2, 1),
         useNativeDriver: true,
     }).start()
-    }, 1000)
+    }, 400)
     }, []);
 
 
   return (
     <Animated.View style={[styles.overlay, {transform: [{translateY: slideValue}]}]}>
+    <LinearGradient
+      colors={['#0a0909ff', '#0a0909ff', '#0a0909ff']}
+      style={StyleSheet.absoluteFill}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    />
     <View style={styles.topRow}>
-      <Icon style={styles.icon} name="close-circle-outline" size={32} />
-      {/* <Text style={styles.heading}>Sends</Text> */}
+      <Text style={styles.heading}>Routes 🧩</Text>
+      <TouchableOpacity>
+        <Icon style={styles.closeIcon} name="close-circle-outline" size={28} />
+      </TouchableOpacity>
+    </View>
+    <View style={styles.interactionContainer}>
+      <Icon style={styles.likeIcon} name="heart-outline" size={32}></Icon>
+      <Icon style={styles.likeIcon} name="chatbubble-ellipses-outline" size={32}></Icon>
+      <Icon style={styles.likeIcon} name="share-social-outline" size={32}></Icon>
     </View>
     <View style={styles.contentContainer}>
-      <VideoView style={styles.video} player={player} allowsFullscreen allowsPictureInPicture contentFit='contain' nativeControls={true}/>
+      <VideoView style={styles.video} player={player} allowsFullscreen allowsPictureInPicture contentFit='contain' nativeControls={false}/>
     </View>
     </Animated.View>
   );
@@ -69,8 +84,9 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     bottom: 20,
-    width: '100%',
-    height: '100%',
+    borderRadius: 200,
+    overflow: 'hidden',
+
   },
   video: {
     width: '100%',
@@ -85,16 +101,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
-  icon: {
-    marginTop: '1%',
+  closeIcon: {
+    marginTop: '5%',
+    marginLeft: '10%',
     zIndex: 200,
     color: 'white',
   },
   heading: {
-    marginRight: '8%',
+    left: '3%',
     fontFamily: 'Cal-Sans',
     fontSize: 28,
     zIndex: 200,
     color: 'white'
-  }
+  },
+  interactionContainer: {
+    right: '6%',
+    top: '50%',
+    position: 'absolute',
+    flexDirection: 'column',
+    alignItems: 'flex-end'
+  },
+  likeIcon: {
+    zIndex: 205,
+    color: 'white',
+  },
 });
