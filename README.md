@@ -18,4 +18,3 @@ Mosaic Climbing
 2424 Harrison Street  
 San Francisco, CA 94110
 
-Visit during beta testing hours to experience Boulder's cutting-edge climbing technology firsthand. No installation required - simply use the app on-site to enhance your climbing session.
