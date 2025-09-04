@@ -8,21 +8,10 @@ import { initializeApp } from 'firebase/app';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { useNavigate } from 'react-router-native';
-import Gallery from './Gallery'
+import Gallery from './Gallery'  
+import { Dropdown } from 'react-native-element-dropdown';
 
 LogBox.ignoreLogs(['Warning: ...']);
-
-export const GlobalArrayContext = createContext();
-
-export const GlobalArrayProvider = ({ children }) => {
-  const videoName = useRef('')
-
-  return (
-    <GlobalArrayContext.Provider value={{ videoName }}>
-      {children}
-    </GlobalArrayContext.Provider>
-  );
-};
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfJxqVElWXx3UNULE1R-2OG1zX4K5lKGo",
@@ -32,9 +21,84 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 
+const GlobalContext = createContext();
+
+export const GlobalArrayProvider = ({ children }) => {
+  const [array, setArray] = useState([]); 
+
+  return (
+    <GlobalContext.Provider value={{ array, setArray }}>
+      {children}
+    </GlobalContext.Provider>
+  );
+};
+
+export const useVideo = () => useContext(GlobalContext);
+
+const colorData = [
+  { label: '⚪🤍', value: 'white' },
+  { label: '💛🌕', value: 'yellow' },
+  { label: '❤️🔴', value: 'red' },
+  { label: '💙🔵', value: 'blue' },
+  { label: '💚🌱', value: 'green' },
+  { label: '🖤⚫', value: 'black' },
+];
+
+const DropdownComponent = ({ onColorChange }) => {
+  const [value, setValue] = useState(null);
+  const [isFocus, setIsFocus] = useState(false);
+
+  return (
+    <View style={styles.dropdownContainer}>
+      <Dropdown
+        style={[styles.dropdown, isFocus && { borderColor: 'rgba(255,255,255,0.8)' }]}
+        placeholderStyle={styles.placeholderStyle}
+        selectedTextStyle={styles.selectedTextStyle}
+        inputSearchStyle={styles.inputSearchStyle}
+        iconStyle={styles.iconStyle}
+        itemTextStyle={styles.itemTextStyle}
+        itemContainerStyle={styles.itemContainerStyle}
+        containerStyle={styles.dropdownListContainer}
+        data={colorData}
+        search={false} // Remove search for cleaner look
+        maxHeight={200} // Reduce height
+        labelField="label"
+        valueField="value"
+        placeholder={!isFocus ? 'Color' : '...'}
+        value={value}
+        onFocus={() => setIsFocus(true)}
+        activeColor="rgba(255,255,255,0.1)"
+        onBlur={() => setIsFocus(false)}
+        onChange={item => {
+          setValue(item.value);
+          setIsFocus(false);
+          if (onColorChange) {
+            onColorChange(item.value, item.label);
+          }
+        }}
+        renderLeftIcon={() => (
+          <View style={[styles.colorIndicator, { backgroundColor: value || 'rgba(255,255,255,0.3)' }]} />
+        )}
+        renderRightIcon={() => (
+          <Icon 
+            name={isFocus ? 'chevron-up' : 'chevron-down'} 
+            size={16} 
+            color="rgba(255,255,255,0.7)" 
+          />
+        )}
+      />
+    </View>
+  );
+};
+
 const Home = () => {
-  const videoName = useContext(GlobalArrayContext);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const handleColorChange = (colorValue, colorLabel) => {
+    setSelectedColor(colorValue);
+    console.log('Selected color:', colorValue);
+  };
   const navigate = useNavigate()
+  const { array, setArray } = useVideo();
   const [rectSize, setRectSize] = useState({ width: 250, height: 120 });
   const rectBase = useRef({ width: 250, height: 120 });
   const [rectPosition, setRectPosition] = useState({ x: 0, y: 0 });
@@ -401,21 +465,27 @@ const capturePhoto = async () => {
     setUploaded(true);
     
     try {
-      const thumbResponse = await fetch('http://10.160.23.22:5000/save-thumb', {
+      const thumbResponse = await fetch('http://10.37.19.22:5000/save-thumb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ thumb_url: photoURL }),
+        body: JSON.stringify({ thumb_url: photoURL, color_value: selectedColor}),
       });
-
       const data = await thumbResponse.json();
-      const videoId = data.id;
-
-      const videoRef = ref(storage, `Videos/${videoId}.mp4` )
-      const videoUrl = await getDownloadURL(videoRef);
-      setVideoUrl(videoUrl)
-
-      videoName.current = videoUrl
       
+      for (const id in data) {
+        if (/^id\d+$/.test(id)) {
+          console.log(id);
+
+          const videoId = data[id];
+
+          const videoRef = ref(storage, `Videos/${videoId}.mp4`);
+          const videoUrl = await getDownloadURL(videoRef);
+          setVideoUrl(videoUrl);
+
+          setArray(prevVideos => [...prevVideos, { videoUrl }]);
+        }
+      }
+
       if (thumbResponse.ok) {
         setTimeout(() => resultFadeIn(), 500);
         setBetaFound(true);
@@ -469,7 +539,7 @@ const onCapturePress = async () => {
         await uploadBytes(thumbRef, thumbBlob);
         const thumbURL = await getDownloadURL(thumbRef);
         
-        await fetch('http://10.160.23.22:5000/upsert', {
+        await fetch('http://172.28.179.22:5000/upsert', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ID, thumb_url: thumbURL }),
@@ -565,7 +635,8 @@ const onCapturePress = async () => {
               </Animated.View>
             </View>
             <Animated.View style={{ opacity: fadeAnim }}>
-              <Icon style={styles.questionIcon} name="help-circle-outline" size={33} />
+              {/* <Icon style={styles.questionIcon} name="help-circle-outline" size={33} /> */}
+              <DropdownComponent onColorChange={handleColorChange} />
             </Animated.View>
           </View>
           <View
@@ -808,4 +879,63 @@ const styles = StyleSheet.create({
   subHeading33: { fontSize: 14, textAlign: 'center', color: '#555', marginBottom: 15 },
   button3: { backgroundColor: 'black', paddingVertical: 10, paddingHorizontal: 25, borderRadius: 20 },
   buttonText3: { color: 'white', fontWeight: '600', fontSize: 14 },
+  dropdownContainer: {
+    backgroundColor: 'transparent',
+    margin: 16,
+  },
+  dropdown: {
+    height: 30,
+    width: 100,
+    borderColor: 'white',
+    borderWidth: 1.5,
+    borderRadius: 15, 
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(0,0,0,0.2)', 
+  },
+  placeholderStyle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+  },
+  selectedTextStyle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
+  },
+  iconStyle: {
+    width: 16,
+    height: 16,
+    tintColor: 'rgba(255,255,255,0.7)',
+  },
+  colorIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+    dropdownListContainer: {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'white',
+    marginTop: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  itemContainerStyle: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 12,
+    borderBottomWidth: 0, 
+  },
+  itemTextStyle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '400',
+  },
 });
